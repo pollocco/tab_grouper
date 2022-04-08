@@ -1,0 +1,31 @@
+{
+
+  "manifest_version": 2,
+  "name": "Tab Grouper",
+  "version": "1.0",
+
+  "description": "Adds a red border to all webpages matching mozilla.org.",
+
+  "permissions": [
+    "contextMenus",
+    "tabHide",
+    "tabs"
+  ],
+
+  "icons": {
+    "48": "icons/border-48.png"
+  },
+
+  "browser_action": {
+    "default_title": "Tab group",
+    "default_icon": "icons/icon-32.png",
+    "default_popup": "popup/tab_group_popup.html",
+    "default_area": "tabstrip"
+  },
+
+  "background":
+    {
+      "scripts": ["dist/tab_grouper.js"]
+    }
+
+}
