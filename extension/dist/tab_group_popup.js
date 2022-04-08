@@ -76,7 +76,7 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.loadTabsFromStorage = exports.saveTabsToStorage = undefined;
+exports.loadTabsFromStorage = exports.loadFlipperTabId = exports.saveFlipperTabId = exports.saveTabsToStorage = undefined;
 
 let saveTabsToStorage = exports.saveTabsToStorage = (() => {
     var _ref = _asyncToGenerator(function* (tabs) {
@@ -94,8 +94,43 @@ let saveTabsToStorage = exports.saveTabsToStorage = (() => {
     };
 })();
 
+let saveFlipperTabId = exports.saveFlipperTabId = (() => {
+    var _ref2 = _asyncToGenerator(function* (id) {
+        const storedTabs = yield (0, _idbFileStorage.getFileStorage)({ name: "tabs-grouped" });
+        const file = yield storedTabs.createMutableFile("flipper_tab.json");
+        const fh = file.open("readwrite");
+        yield fh.write(JSON.stringify({ id: id }));
+        yield fh.close();
+
+        yield file.persist();
+    });
+
+    return function saveFlipperTabId(_x2) {
+        return _ref2.apply(this, arguments);
+    };
+})();
+
+let loadFlipperTabId = exports.loadFlipperTabId = (() => {
+    var _ref3 = _asyncToGenerator(function* () {
+        const storedTabs = yield (0, _idbFileStorage.getFileStorage)({ name: "tabs-grouped" });
+        var file = yield storedTabs.get('flipper_tab.json');
+        if (file.open) {
+            const fh = yield file.open("readonly");
+            const metadata = yield fh.getMetadata();
+            var id = yield fh.readAsText(metadata.size);
+            id = JSON.parse(id);
+            yield fh.close();
+            return id.id;
+        }
+    });
+
+    return function loadFlipperTabId() {
+        return _ref3.apply(this, arguments);
+    };
+})();
+
 let loadTabsFromStorage = exports.loadTabsFromStorage = (() => {
-    var _ref2 = _asyncToGenerator(function* () {
+    var _ref4 = _asyncToGenerator(function* () {
         const storedTabs = yield (0, _idbFileStorage.getFileStorage)({ name: "tabs-grouped" });
         var file = yield storedTabs.get('tabs_grouped.json');
         if (file.open) {
@@ -109,7 +144,7 @@ let loadTabsFromStorage = exports.loadTabsFromStorage = (() => {
     });
 
     return function loadTabsFromStorage() {
-        return _ref2.apply(this, arguments);
+        return _ref4.apply(this, arguments);
     };
 })();
 
@@ -1028,12 +1063,25 @@ let listenForClicks = (() => {
 
         let elClasses = e.target.classList;
         let eTmp = e.target;
+        if (elClasses.contains("close") || elClasses.contains("tab") || elClasses.contains("open-tab")) {
+          var clickedTabId = eTmp.parentElement.id.slice(10);
+        }
         if (elClasses.contains("close")) {
           removeTabItem(eTmp.parentElement, reportError);
-
-          yield removeFromTabGroup(eTmp.parentElement.id.slice(10));
-        } else if (elClasses.contains("tab")) {
-          showTab(eTmp);
+          yield removeFromTabGroup(clickedTabId);
+        } else if (elClasses.contains("tab") || elClasses.contains("open-tab")) {
+          try {
+            var id = yield (0, _storage.loadFlipperTabId)();
+            if (id) {
+              showTab(clickedTabId, id);
+            }
+          } catch (e) {
+            console.log(e);
+            openNewFlipperTab(clickedTabId).then(_asyncToGenerator(function* () {
+              id = yield (0, _storage.loadFlipperTabId)();
+              showTab(clickedTabId, id);
+            }));
+          }
         } else if (elClasses.contains("reset")) {
           browser.tabs.query({ active: true, currentWindow: true }).then(reset).catch(reportError);
         }
@@ -1044,8 +1092,19 @@ let listenForClicks = (() => {
       };
     })();
 
+    let onCreated = (() => {
+      var _ref4 = _asyncToGenerator(function* (tab) {
+        console.log(`Created new tab: ${tab.id}`);
+        yield (0, _storage.saveFlipperTabId)(tab.id);
+      });
+
+      return function onCreated(_x2) {
+        return _ref4.apply(this, arguments);
+      };
+    })();
+
     let removeFromTabGroup = (() => {
-      var _ref3 = _asyncToGenerator(function* (tabId) {
+      var _ref5 = _asyncToGenerator(function* (tabId) {
         let tabIdToRemove = parseInt(tabId);
         console.log(tabIdToRemove);
         for (let i = tabGroup.length - 1; i >= 0; i--) {
@@ -1059,22 +1118,27 @@ let listenForClicks = (() => {
         yield (0, _storage.saveTabsToStorage)(tabGroup);
       });
 
-      return function removeFromTabGroup(_x2) {
-        return _ref3.apply(this, arguments);
+      return function removeFromTabGroup(_x3) {
+        return _ref5.apply(this, arguments);
       };
     })();
 
-    let getTabById = (() => {
-      var _ref4 = _asyncToGenerator(function* (id) {
-        for (tab of tabGroup) {
-          if (tab.id == id) {
-            return tab;
-          }
-        }
+    let showTab = (() => {
+      var _ref6 = _asyncToGenerator(function* (tabId, flipperTabId) {
+        var groupTab = getTabById(tabId);
+
+        browser.tabs.update(flipperTabId, {
+          active: true,
+          url: groupTab.url
+        });
+        /*     .then( () => {
+              let moving = browser.tabs.move( tabId, { index: -1 } );
+              moving.then( onMoved, reportError );
+            } ); */
       });
 
-      return function getTabById(_x3) {
-        return _ref4.apply(this, arguments);
+      return function showTab(_x4, _x5) {
+        return _ref6.apply(this, arguments);
       };
     })();
 
@@ -1104,7 +1168,7 @@ let listenForClicks = (() => {
 
       let tabCloseButton = document.createElement("button");
       tabCloseButton.className = "close";
-      tabCloseButton.textContent = "X";
+      tabCloseButton.textContent = "❌";
 
       tabItemContainer.appendChild(tabCloseButton);
 
@@ -1117,20 +1181,32 @@ let listenForClicks = (() => {
 
     document.addEventListener("click", handleClick);
 
+    function onError(error) {
+      console.log(`Error: ${error}`);
+    }
+
+    function openNewFlipperTab(openingTabId) {
+      let tab = getTabById(openingTabId);
+      let url = tab.url;
+      let creating = browser.tabs.create({
+        url,
+        index: 0,
+        active: true,
+        pinned: true
+      });
+      creating.then(onCreated, onError);
+    }
+
     function removeTabItem(tabContainer, reportError) {
       document.getElementById("popup-content").removeChild(document.getElementById(tabContainer.id));
     }
 
-    function showTab(tab) {
-      let tabId = parseInt(tab.id);
-      browser.tabs.show(tabId).then(() => {
-        browser.tabs.update(tabId, {
-          active: true
-        }).then(() => {
-          let moving = browser.tabs.move(tabId, { index: -1 });
-          moving.then(onMoved, reportError);
-        });
-      });
+    function getTabById(id) {
+      for (let tab of tabGroup) {
+        if (tab.id == id) {
+          return tab;
+        }
+      }
     }
   });
 

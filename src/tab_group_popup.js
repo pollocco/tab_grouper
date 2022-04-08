@@ -1,4 +1,4 @@
-import { saveTabsToStorage, loadTabsFromStorage } from './utils/storage';
+import { saveTabsToStorage, loadTabsFromStorage, saveFlipperTabId, loadFlipperTabId } from './utils/storage';
 
 /**
  * Listen for clicks on the buttons, and send the appropriate message to
@@ -31,7 +31,7 @@ async function listenForClicks() {
 
     let tabCloseButton = document.createElement( "button" );
     tabCloseButton.className = "close";
-    tabCloseButton.textContent = "X";
+    tabCloseButton.textContent = "❌";
 
     tabItemContainer.appendChild( tabCloseButton );
 
@@ -54,13 +54,27 @@ async function listenForClicks() {
 
     let elClasses = e.target.classList;
     let eTmp = e.target;
+    if( elClasses.contains( "close" ) 
+          ||  elClasses.contains( "tab" ) 
+          || elClasses.contains( "open-tab" )  ){
+      var clickedTabId = eTmp.parentElement.id.slice( 10 )
+    }
     if( elClasses.contains( "close" ) ) {
       removeTabItem( eTmp.parentElement, reportError );
-
-      await removeFromTabGroup( eTmp.parentElement.id.slice( 10 ) );
-      
-    } else if( elClasses.contains( "tab" ) ) {
-      showTab( eTmp );
+      await removeFromTabGroup( clickedTabId );
+    } else if( elClasses.contains( "tab" ) || elClasses.contains( "open-tab" ) ) {
+      try {
+        var id = await loadFlipperTabId();
+        if( id ) {
+          showTab( clickedTabId, id );
+        } 
+      } catch( e ) {
+        console.log( e );
+        openNewFlipperTab( clickedTabId ).then(async()=>{
+          id = await loadFlipperTabId();
+          showTab(clickedTabId, id)
+        });
+      }
     } else if( elClasses.contains( "reset" ) ) {
       browser.tabs
         .query( { active: true, currentWindow: true } )
@@ -69,14 +83,36 @@ async function listenForClicks() {
     }
   }
 
+  async function onCreated(tab) {
+    console.log(`Created new tab: ${tab.id}`)
+    await saveFlipperTabId(tab.id);
+
+  }
+  
+  function onError(error) {
+    console.log(`Error: ${error}`);
+  }
+
+  function openNewFlipperTab( openingTabId ) {
+    let tab = getTabById(openingTabId);
+    let url = tab.url;
+    let creating = browser.tabs.create({
+      url,
+      index: 0,
+      active: true,
+      pinned: true
+    });
+    creating.then(onCreated, onError);
+  }
+
   async function removeFromTabGroup( tabId ) {
     let tabIdToRemove = parseInt( tabId );
-    console.log(tabIdToRemove);
-    for( let i = tabGroup.length-1; i >= 0; i-- ) {
+    console.log( tabIdToRemove );
+    for( let i = tabGroup.length - 1; i >= 0; i-- ) {
       if( tabGroup[ i ].id == tabIdToRemove ) {
-        console.log(tabGroup);
+        console.log( tabGroup );
         tabGroup.splice( i, 1 );
-        console.log(tabGroup);
+        console.log( tabGroup );
         break;
       }
     }
@@ -88,26 +124,26 @@ async function listenForClicks() {
       .removeChild( document.getElementById( tabContainer.id ) );
   }
 
-  async function getTabById( id ) {
-    for( tab of tabGroup ) {
+  function getTabById( id ) {
+    for( let tab of tabGroup ) {
       if( tab.id == id ) {
         return tab;
       }
     }
   }
 
-  function showTab( tab ) {
-    let tabId = parseInt( tab.id );
-    browser.tabs.show( tabId ).then( () => {
-      browser.tabs
-        .update( tabId, {
-          active: true,
-        } )
-        .then( () => {
+  async function showTab( tabId, flipperTabId ) {
+    var groupTab = getTabById( tabId );
+
+    browser.tabs
+      .update( flipperTabId, {
+        active: true,
+        url: groupTab.url
+      } );
+    /*     .then( () => {
           let moving = browser.tabs.move( tabId, { index: -1 } );
           moving.then( onMoved, reportError );
-        } );
-    } );
+        } ); */
   }
 }
 

@@ -76,7 +76,7 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.loadTabsFromStorage = exports.saveTabsToStorage = undefined;
+exports.loadTabsFromStorage = exports.loadFlipperTabId = exports.saveFlipperTabId = exports.saveTabsToStorage = undefined;
 
 let saveTabsToStorage = exports.saveTabsToStorage = (() => {
     var _ref = _asyncToGenerator(function* (tabs) {
@@ -94,8 +94,43 @@ let saveTabsToStorage = exports.saveTabsToStorage = (() => {
     };
 })();
 
+let saveFlipperTabId = exports.saveFlipperTabId = (() => {
+    var _ref2 = _asyncToGenerator(function* (id) {
+        const storedTabs = yield (0, _idbFileStorage.getFileStorage)({ name: "tabs-grouped" });
+        const file = yield storedTabs.createMutableFile("flipper_tab.json");
+        const fh = file.open("readwrite");
+        yield fh.write(JSON.stringify({ id: id }));
+        yield fh.close();
+
+        yield file.persist();
+    });
+
+    return function saveFlipperTabId(_x2) {
+        return _ref2.apply(this, arguments);
+    };
+})();
+
+let loadFlipperTabId = exports.loadFlipperTabId = (() => {
+    var _ref3 = _asyncToGenerator(function* () {
+        const storedTabs = yield (0, _idbFileStorage.getFileStorage)({ name: "tabs-grouped" });
+        var file = yield storedTabs.get('flipper_tab.json');
+        if (file.open) {
+            const fh = yield file.open("readonly");
+            const metadata = yield fh.getMetadata();
+            var id = yield fh.readAsText(metadata.size);
+            id = JSON.parse(id);
+            yield fh.close();
+            return id.id;
+        }
+    });
+
+    return function loadFlipperTabId() {
+        return _ref3.apply(this, arguments);
+    };
+})();
+
 let loadTabsFromStorage = exports.loadTabsFromStorage = (() => {
-    var _ref2 = _asyncToGenerator(function* () {
+    var _ref4 = _asyncToGenerator(function* () {
         const storedTabs = yield (0, _idbFileStorage.getFileStorage)({ name: "tabs-grouped" });
         var file = yield storedTabs.get('tabs_grouped.json');
         if (file.open) {
@@ -109,7 +144,7 @@ let loadTabsFromStorage = exports.loadTabsFromStorage = (() => {
     });
 
     return function loadTabsFromStorage() {
-        return _ref2.apply(this, arguments);
+        return _ref4.apply(this, arguments);
     };
 })();
 
