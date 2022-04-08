@@ -41,7 +41,7 @@ function addToTabGroup(tab){
     newTabCreate.then( onCreated, onError );
     browser.tabs.onActivated.addListener( tabGroupContextMenu );
   } */
-  tab_group.push(tab.id);
+  tab_group.push(tab);
   browser.tabs.hide(tab.id).then(onHidden, onError);
   browser.tabs.query({
     currentWindow: true
@@ -62,7 +62,15 @@ function connected(p) {
   portFromCS = p;
   portFromCS.postMessage({greeting: "hi there content script!"});
   portFromCS.onMessage.addListener(function(m) {
-    portFromCS.postMessage({tabGroup: m.tab_group});
+    if( m.remove ){
+      for( i=0; i<tab_group.length; i++ ){
+        if( tab_group[i].id === parseInt(m.remove) ){
+          tab_group.splice(i, 1);
+          console.log("removed " + m.remove);
+        }
+      }
+    }
+    portFromCS.postMessage({tabGroup: tab_group});
   });
 }
 

@@ -2,8 +2,12 @@
  * Listen for clicks on the buttons, and send the appropriate message to
  * the content script in the page.
  */
-function listenForClicks() {
-  browser.tabs.query({currentWindow: true, hidden: true}).then((tabList)=>{
+function listenForClicks(tabList) {
+
+    for( child of document.getElementById("popup-content").children ){
+        document.getElementById("popup-content").removeChild(child);
+    }
+
     for( tab of tabList ){
         let tabItem = document.createElement( "div" );
 
@@ -22,10 +26,7 @@ function listenForClicks() {
         tabItem.appendChild(faviconDiv);
 
         document.getElementById( "popup-content" ).appendChild(tabItem);
-      }
-  }
-
-  );
+    }
 
   function onMoved(tab){
     console.log("Moved " + tab.id);
@@ -50,6 +51,8 @@ function listenForClicks() {
                 }).then(()=>{
                       let moving = browser.tabs.move(parseInt(tgt.id), {index: -1});
                       moving.then(onMoved, reportError);
+                }).then(()=>{
+                    myPort.postMessage({remove: tgt.id});
                 })
             })
 
@@ -70,10 +73,11 @@ myPort.postMessage({greeting: "hello from content script"});
 myPort.onMessage.addListener(function(m) {
     console.log("In content script, received message from background script: ");
     console.log(m.tabGroup);
+    listenForClicks(m.tabGroup);
 });
   
 document.body.addEventListener("click", function() {
     myPort.postMessage({greeting: "they clicked the page!"});
 });
 
-listenForClicks();
+
