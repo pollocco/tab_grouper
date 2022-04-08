@@ -42,35 +42,9 @@ function addToTabGroup(tab){
     browser.tabs.onActivated.addListener( tabGroupContextMenu );
   } */
   tab_group.push(tab.id);
+  console.log(tab_group);
   browser.tabs.hide(tab.id).then(onHidden, onError);
-  browser.tabs.query({
-    currentWindow: true
-  }).then((tabs)=>{
-/*     for( tab of tabs ){
-      browser.runtime.sendMessage(tab.id, {
-        command: "tab_group_update",
-        tabGroup: tab_group
-      }).catch(onError);
-    } */
-  })
-
 }
-
-let portFromCS;
-
-function connected(p) {
-  portFromCS = p;
-  portFromCS.postMessage({greeting: "hi there content script!"});
-  portFromCS.onMessage.addListener(function(m) {
-    portFromCS.postMessage({tabGroup: m.tab_group});
-  });
-}
-
-browser.runtime.onConnect.addListener(connected);
-
-browser.browserAction.onClicked.addListener(function() {
-  portFromCS.postMessage({greeting: "they clicked the button!"});
-});
 
 try {
   console.log("browser : ");

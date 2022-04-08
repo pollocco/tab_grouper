@@ -64,16 +64,5 @@ function listenForClicks() {
   });
 }
 
-let myPort = browser.runtime.connect({name:"hello"});
-myPort.postMessage({greeting: "hello from content script"});
-
-myPort.onMessage.addListener(function(m) {
-    console.log("In content script, received message from background script: ");
-    console.log(m.tabGroup);
-});
-  
-document.body.addEventListener("click", function() {
-    myPort.postMessage({greeting: "they clicked the page!"});
-});
 
 listenForClicks();
