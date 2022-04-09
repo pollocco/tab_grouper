@@ -35,25 +35,23 @@ function onCreated( tab ) {
 }
 
 async function addToTabGroup( tab ) {
-  /*   if( tabGroup.length == 0 ){
-      let newTabCreate = browser.tabs.create({
-        active: false,
-        index: 0,
-        pinned: true
-      })
-      newTabCreate.then( onCreated, onError );
-      browser.tabs.onActivated.addListener( tabGroupContextMenu );
-    } */
   try{
     tabGroup = await loadTabsFromStorage();
-  } catch(e){
+  } catch(e) {
     console.log(e);
     tabGroup = [];
   }
-  
   tabGroup.push( tab );
-  browser.tabs.hide( tab.id ).then( onHidden, onError );
-  await saveTabsToStorage( tabGroup );
+  browser.tabs.create({
+    url: "about:blank",
+    active: true
+  }).then((created)=>{
+    browser.tabs.remove(created.id);
+  }).then(()=>{
+    browser.tabs.hide( tab.id ).then( onHidden, onError );
+  }).then(()=>{
+    saveTabsToStorage( tabGroup );
+  })
 }
 
 let myPort;

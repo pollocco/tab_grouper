@@ -1049,25 +1049,23 @@ class IDBFileStorage {
 
 let addToTabGroup = (() => {
   var _ref = _asyncToGenerator(function* (tab) {
-    /*   if( tabGroup.length == 0 ){
-        let newTabCreate = browser.tabs.create({
-          active: false,
-          index: 0,
-          pinned: true
-        })
-        newTabCreate.then( onCreated, onError );
-        browser.tabs.onActivated.addListener( tabGroupContextMenu );
-      } */
     try {
       tabGroup = yield (0, _storage.loadTabsFromStorage)();
     } catch (e) {
       console.log(e);
       tabGroup = [];
     }
-
     tabGroup.push(tab);
-    browser.tabs.hide(tab.id).then(onHidden, onError);
-    yield (0, _storage.saveTabsToStorage)(tabGroup);
+    browser.tabs.create({
+      url: "about:blank",
+      active: true
+    }).then(function (created) {
+      browser.tabs.remove(created.id);
+    }).then(function () {
+      browser.tabs.hide(tab.id).then(onHidden, onError);
+    }).then(function () {
+      (0, _storage.saveTabsToStorage)(tabGroup);
+    });
   });
 
   return function addToTabGroup(_x) {

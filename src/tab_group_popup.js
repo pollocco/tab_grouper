@@ -6,6 +6,14 @@ import { saveTabsToStorage, loadTabsFromStorage, saveFlipperTabId, loadFlipperTa
  */
 async function listenForClicks() {
   var tabGroup = await loadTabsFromStorage();
+  var allTabs = await browser.tabs.query({ currentWindow: true });
+  for( let i=0; i<allTabs.length; i++ ){
+    for( let j=0; j<tabGroup.length; j++ ){
+      if( allTabs[i].id == tabGroup[j].id && allTabs[i] != tabGroup[j] ){
+        tabGroup[j] = allTabs[i];
+      }
+    }
+  }
   for( let tab of tabGroup ) {
     let tabItem = document.createElement( "div" );
 
@@ -140,30 +148,35 @@ async function listenForClicks() {
   }
 
   function showTab( tabId, flipperTabId ) {
-    if( tabId == flipperTabId ){
-      return;
-    }
     var groupTab = getTabById( tabId );
     return new Promise((resolve, reject)=>{
-      browser.tabs.show( parseInt(tabId) ).then(()=>{
-        browser.tabs
-        .update( parseInt(tabId), {
+      if( tabId == flipperTabId ){
+        browser.tabs.update(parseInt(tabId), {
           active: true,
-          pinned: true,
-        } ).then(()=>{
-          browser.tabs.update( flipperTabId, {
-            pinned: false
-          }).then(()=>{
-            browser.tabs.hide( flipperTabId )
-          }).then(()=>{
-            saveFlipperTabId( parseInt(tabId) ).then(()=>{
-              return Promise.resolve();
+          pinned: true
+        }).then(()=>{
+          return Promise.resolve();
+        })
+      } else {
+        browser.tabs.show( parseInt(tabId) ).then(()=>{
+          browser.tabs
+          .update( parseInt(tabId), {
+            active: true,
+            pinned: true,
+          } ).then(()=>{
+            browser.tabs.update( flipperTabId, {
+              pinned: false
+            }).then(()=>{
+              browser.tabs.hide( flipperTabId )
+            }).then(()=>{
+              saveFlipperTabId( parseInt(tabId) ).then(()=>{
+                return Promise.resolve();
+              })
             })
-          })
+          });
         });
-      });
+      }
     })
-
   }
 }
 

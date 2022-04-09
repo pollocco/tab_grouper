@@ -1127,6 +1127,14 @@ let listenForClicks = (() => {
     })();
 
     var tabGroup = yield (0, _storage.loadTabsFromStorage)();
+    var allTabs = yield browser.tabs.query({ currentWindow: true });
+    for (let i = 0; i < allTabs.length; i++) {
+      for (let j = 0; j < tabGroup.length; j++) {
+        if (allTabs[i].id == tabGroup[j].id && allTabs[i] != tabGroup[j]) {
+          tabGroup[j] = allTabs[i];
+        }
+      }
+    }
     for (let tab of tabGroup) {
       let tabItem = document.createElement("div");
 
@@ -1194,27 +1202,33 @@ let listenForClicks = (() => {
     }
 
     function showTab(tabId, flipperTabId) {
-      if (tabId == flipperTabId) {
-        return;
-      }
       var groupTab = getTabById(tabId);
       return new Promise((resolve, reject) => {
-        browser.tabs.show(parseInt(tabId)).then(() => {
+        if (tabId == flipperTabId) {
           browser.tabs.update(parseInt(tabId), {
             active: true,
             pinned: true
           }).then(() => {
-            browser.tabs.update(flipperTabId, {
-              pinned: false
+            return Promise.resolve();
+          });
+        } else {
+          browser.tabs.show(parseInt(tabId)).then(() => {
+            browser.tabs.update(parseInt(tabId), {
+              active: true,
+              pinned: true
             }).then(() => {
-              browser.tabs.hide(flipperTabId);
-            }).then(() => {
-              (0, _storage.saveFlipperTabId)(parseInt(tabId)).then(() => {
-                return Promise.resolve();
+              browser.tabs.update(flipperTabId, {
+                pinned: false
+              }).then(() => {
+                browser.tabs.hide(flipperTabId);
+              }).then(() => {
+                (0, _storage.saveFlipperTabId)(parseInt(tabId)).then(() => {
+                  return Promise.resolve();
+                });
               });
             });
           });
-        });
+        }
       });
     }
   });
