@@ -54,15 +54,20 @@ async function listenForClicks() {
 
     let elClasses = e.target.classList;
     let eTmp = e.target;
+
     if( elClasses.contains( "close" ) 
           ||  elClasses.contains( "tab" ) 
           || elClasses.contains( "open-tab" )  ){
       var clickedTabId = eTmp.parentElement.id.slice( 10 )
     }
+
     if( elClasses.contains( "close" ) ) {
       removeTabItem( eTmp.parentElement, reportError );
       await removeFromTabGroup( clickedTabId );
-    } else if( elClasses.contains( "tab" ) || elClasses.contains( "open-tab" ) ) {
+      await browser.tabs.remove( clickedTabId );
+    } 
+    
+    else if( elClasses.contains( "tab" ) || elClasses.contains( "open-tab" ) ) {
       try {
         var id = await loadFlipperTabId();
         if( id ) {
@@ -75,7 +80,9 @@ async function listenForClicks() {
           showTab(clickedTabId, id)
         });
       }
-    } else if( elClasses.contains( "reset" ) ) {
+    } 
+    
+    else if( elClasses.contains( "reset" ) ) {
       browser.tabs
         .query( { active: true, currentWindow: true } )
         .then( reset )
@@ -132,18 +139,31 @@ async function listenForClicks() {
     }
   }
 
-  async function showTab( tabId, flipperTabId ) {
+  function showTab( tabId, flipperTabId ) {
+    if( tabId == flipperTabId ){
+      return;
+    }
     var groupTab = getTabById( tabId );
+    return new Promise((resolve, reject)=>{
+      browser.tabs.show( parseInt(tabId) ).then(()=>{
+        browser.tabs
+        .update( parseInt(tabId), {
+          active: true,
+          pinned: true,
+        } ).then(()=>{
+          browser.tabs.update( flipperTabId, {
+            pinned: false
+          }).then(()=>{
+            browser.tabs.hide( flipperTabId )
+          }).then(()=>{
+            saveFlipperTabId( parseInt(tabId) ).then(()=>{
+              return Promise.resolve();
+            })
+          })
+        });
+      });
+    })
 
-    browser.tabs
-      .update( flipperTabId, {
-        active: true,
-        url: groupTab.url
-      } );
-    /*     .then( () => {
-          let moving = browser.tabs.move( tabId, { index: -1 } );
-          moving.then( onMoved, reportError );
-        } ); */
   }
 }
 

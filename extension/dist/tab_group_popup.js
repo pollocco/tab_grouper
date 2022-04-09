@@ -1063,12 +1063,15 @@ let listenForClicks = (() => {
 
         let elClasses = e.target.classList;
         let eTmp = e.target;
+
         if (elClasses.contains("close") || elClasses.contains("tab") || elClasses.contains("open-tab")) {
           var clickedTabId = eTmp.parentElement.id.slice(10);
         }
+
         if (elClasses.contains("close")) {
           removeTabItem(eTmp.parentElement, reportError);
           yield removeFromTabGroup(clickedTabId);
+          yield browser.tabs.remove(clickedTabId);
         } else if (elClasses.contains("tab") || elClasses.contains("open-tab")) {
           try {
             var id = yield (0, _storage.loadFlipperTabId)();
@@ -1120,25 +1123,6 @@ let listenForClicks = (() => {
 
       return function removeFromTabGroup(_x3) {
         return _ref5.apply(this, arguments);
-      };
-    })();
-
-    let showTab = (() => {
-      var _ref6 = _asyncToGenerator(function* (tabId, flipperTabId) {
-        var groupTab = getTabById(tabId);
-
-        browser.tabs.update(flipperTabId, {
-          active: true,
-          url: groupTab.url
-        });
-        /*     .then( () => {
-              let moving = browser.tabs.move( tabId, { index: -1 } );
-              moving.then( onMoved, reportError );
-            } ); */
-      });
-
-      return function showTab(_x4, _x5) {
-        return _ref6.apply(this, arguments);
       };
     })();
 
@@ -1207,6 +1191,31 @@ let listenForClicks = (() => {
           return tab;
         }
       }
+    }
+
+    function showTab(tabId, flipperTabId) {
+      if (tabId == flipperTabId) {
+        return;
+      }
+      var groupTab = getTabById(tabId);
+      return new Promise((resolve, reject) => {
+        browser.tabs.show(parseInt(tabId)).then(() => {
+          browser.tabs.update(parseInt(tabId), {
+            active: true,
+            pinned: true
+          }).then(() => {
+            browser.tabs.update(flipperTabId, {
+              pinned: false
+            }).then(() => {
+              browser.tabs.hide(flipperTabId);
+            }).then(() => {
+              (0, _storage.saveFlipperTabId)(parseInt(tabId)).then(() => {
+                return Promise.resolve();
+              });
+            });
+          });
+        });
+      });
     }
   });
 

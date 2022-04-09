@@ -1,0 +1,7 @@
+try {
+  console.log("browser : ");
+  console.log(browser);
+  console.log("browser.tabs : " + browser.tabs);
+
+  console.log("err : ", err);
+}
